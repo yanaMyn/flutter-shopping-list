@@ -19,6 +19,8 @@ class GroceryList extends StatefulWidget {
 
 class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
+  var _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -31,6 +33,12 @@ class _GroceryListState extends State<GroceryList> {
         "flutter-prep-bb36e-default-rtdb.asia-southeast1.firebasedatabase.app",
         "shopping-list.json");
     final response = await http.get(url);
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = "There is something wrong.";        
+      });
+    }
+
     final Map<String, dynamic> listData = json.decode(response.body);
     final List<GroceryItem> loadedItems = [];
 
@@ -47,18 +55,25 @@ class _GroceryListState extends State<GroceryList> {
     }
 
     setState(() {
-      _groceryItems = loadedItems;      
+      _isLoading = false;
+      _groceryItems = loadedItems;
     });
   }
 
   void _addNewItem() async {
-    await Navigator.of(context).push<GroceryItem>(
+    final newItem = await Navigator.of(context).push<GroceryItem>(
       MaterialPageRoute(
         builder: (context) => const NewItem(),
       ),
     );
 
-    _loadItems();
+    if (newItem == null) {
+      return;
+    }
+
+    setState(() {
+      _groceryItems.add(newItem);
+    });
   }
 
   void _removeItem(GroceryItem item) {
@@ -72,6 +87,12 @@ class _GroceryListState extends State<GroceryList> {
     Widget content = const Center(
       child: Text("No items added yet."),
     );
+
+    if (_isLoading) {
+      content = const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
     if (_groceryItems.isNotEmpty) {
       content = ListView.builder(
@@ -93,6 +114,12 @@ class _GroceryListState extends State<GroceryList> {
             ),
           ),
         ),
+      );
+    }
+
+    if (_error != null) {
+      content = Center(
+        child: Text(_error!),
       );
     }
 
